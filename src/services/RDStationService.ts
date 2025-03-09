@@ -1,7 +1,4 @@
-// src/services/RDStationService.ts
-
 import { rdStationAuth } from './RDStationAuth';
-import { corsProxy } from './CorsProxy';
 
 interface Lead {
   name: string; 
@@ -11,6 +8,22 @@ interface Lead {
 }
 
 export class RDStationService {
+  // Check if we're in production (Netlify) environment
+  private isProduction(): boolean {
+    return window.location.hostname !== 'localhost' && 
+           window.location.hostname !== '127.0.0.1';
+  }
+
+  // Get the appropriate API URL based on environment
+  private getApiUrl(endpoint: string): string {
+    // In production, we can't use the proxy, so use CORS proxy or direct API
+    if (this.isProduction()) {
+      return `https://api.rd.services/${endpoint}`;
+    }
+    // In development, use the proxy
+    return `/rd-api/${endpoint}`;
+  }
+
   // Envia um lead como uma conversão para a RD Station
   public async createLead(lead: Lead): Promise<boolean> {
     try {
@@ -29,11 +42,19 @@ export class RDStationService {
         }
       };
 
-      // Tenta enviar usando o método de autenticação normal
+      // Use CORS proxy method directly in production
+      if (this.isProduction()) {
+        console.log('Using CORS proxy in production environment');
+        return this.createLeadWithCorsProxy(lead);
+      }
+
+      // Try standard API method first (only in development)
       try {
-        // Versão normal com autenticação
+        const apiUrl = this.getApiUrl('platform/events');
+        console.log(`Trying API request to: ${apiUrl}`);
+        
         const response = await rdStationAuth.fetch(
-          'https://api.rd.services/platform/events',
+          apiUrl,
           {
             method: 'POST',
             headers: {
@@ -55,21 +76,44 @@ export class RDStationService {
         throw new Error('Falha na requisição principal');
       } catch (mainError) {
         console.warn('Tentando método alternativo após falha:', mainError);
-        
-        // Método alternativo: conversão direta para o RD Station 
-        // (funciona sem token, mas com limitações)
-        const conversionUrl = 'https://api.rd.services/platform/conversions';
-        const publicToken = '7d8sca73b329t0r1bf2qp72';  // Token público (fictício, substitua pelo seu)
-        
-        const fallbackPayload = {
-          ...conversionData.payload,
-          token: publicToken, // Adiciona o token público para conversões
-          traffic_source: 'LeadChat',
-        };
-        
+        return this.createLeadWithCorsProxy(lead);
+      }
+    } catch (error) {
+      console.error('Erro ao criar conversão no RD Station:', error);
+      return false;
+    }
+  }
+
+  // Method to create lead using CORS proxy
+  private async createLeadWithCorsProxy(lead: Lead): Promise<boolean> {
+    // Public token for conversions (replace with your actual one)
+    const publicToken = 'your_rd_station_public_token';
+    
+    const fallbackPayload = {
+      conversion_identifier: 'LeadChat',
+      email: lead.email,
+      name: lead.name,
+      mobile_phone: lead.phone, 
+      personal_phone: lead.phone, 
+      company: lead.company, 
+      cf_empresa: lead.company,
+      tags: ['leadchat'],
+      token: publicToken,
+      traffic_source: 'LeadChat',
+    };
+    
+    try {
+      // Try each of our CORS proxies
+      for (const proxyPrefix of [
+        'https://corsproxy.io/?',
+        'https://api.allorigins.win/raw?url=',
+      ]) {
         try {
-          // Usa o CORS proxy para fazer a requisição alternativa
-          const fallbackResponse = await corsProxy.fetch(conversionUrl, {
+          const proxyUrl = `${proxyPrefix}${encodeURIComponent('https://api.rd.services/platform/conversions')}`;
+          
+          console.log(`Trying CORS proxy: ${proxyUrl}`);
+          
+          const fallbackResponse = await fetch(proxyUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -78,20 +122,67 @@ export class RDStationService {
           });
           
           if (fallbackResponse.ok) {
-            console.log('Conversão enviada pelo método alternativo com sucesso');
+            console.log('Conversão enviada pelo CORS proxy com sucesso');
             return true;
           } else {
-            console.error('Falha no método alternativo:', await fallbackResponse.text());
-            return false;
+            console.error(`Falha no CORS proxy ${proxyPrefix}:`, await fallbackResponse.text());
           }
-        } catch (fallbackError) {
-          console.error('Erro no método alternativo:', fallbackError);
-          return false;
+        } catch (proxyError) {
+          console.error(`Erro no CORS proxy ${proxyPrefix}:`, proxyError);
         }
       }
-    } catch (error) {
-      console.error('Erro ao criar conversão no RD Station:', error);
+      
+      // Last resort: direct API call (might still fail due to CORS)
+      try {
+        console.log('Trying direct API call as last resort');
+        const directResponse = await fetch('https://api.rd.services/platform/conversions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify(fallbackPayload)
+        });
+        
+        if (directResponse.ok) {
+          console.log('Conversão enviada diretamente com sucesso');
+          return true;
+        } else {
+          console.error('Falha na chamada direta:', await directResponse.text());
+        }
+      } catch (directError) {
+        console.error('Erro na chamada direta:', directError);
+      }
+      
+      // All methods failed
       return false;
+    } catch (error) {
+      console.error('Erro no método alternativo:', error);
+      return false;
+    }
+  }
+  
+  // Alternative method to store leads in localStorage only
+  public storeLeadLocally(lead: Lead): void {
+    try {
+      // Get existing leads or initialize empty array
+      const existingLeadsStr = localStorage.getItem('leadchat_leads') || '[]';
+      const existingLeads = JSON.parse(existingLeadsStr);
+      
+      // Add timestamp
+      const leadWithTimestamp = {
+        ...lead,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Add new lead
+      existingLeads.push(leadWithTimestamp);
+      
+      // Save back to localStorage
+      localStorage.setItem('leadchat_leads', JSON.stringify(existingLeads));
+      
+      console.log('Lead stored locally successfully');
+    } catch (error) {
+      console.error('Error storing lead locally:', error);
     }
   }
 }

@@ -75,6 +75,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const completeLead = data as LeadData;
     
+    // Always store the lead locally first as a backup
+    rdStationService.storeLeadLocally(completeLead);
+    
     // Tenta enviar o lead até 3 vezes
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {

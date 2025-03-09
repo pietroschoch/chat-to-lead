@@ -6,7 +6,6 @@ export class CorsProxyService {
     // Free CORS proxy services
     private readonly CORS_PROXIES = [
       'https://corsproxy.io/?',
-      'https://cors-anywhere.herokuapp.com/',
       'https://api.allorigins.win/raw?url='
     ];
     
