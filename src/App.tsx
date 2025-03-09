@@ -12,4 +12,4 @@ export function App() {
       {isChatOpen && <Chat onClose={() => setIsChatOpen(false)} />}
     </ChatProvider>
   );
-}
+} 
