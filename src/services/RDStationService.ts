@@ -20,10 +20,11 @@ export class RDStationService {
           conversion_identifier: 'LeadChat',
           email: lead.email,
           name: lead.name,
-          phone: lead.phone, 
-          company: lead.company,
+          mobile_phone: lead.phone, 
+          personal_phone: lead.phone, 
+          company: lead.company, 
           cf_empresa: lead.company,
-          tags: ['leadchat', 'demo_gratuita']
+          tags: ['leadchat']
         }
       };
 

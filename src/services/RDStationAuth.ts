@@ -1,12 +1,4 @@
-// src/services/RDStationAuth.ts
-
-interface TokenData {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-  } 
-  
-  export class RDStationAuth {
+    export class RDStationAuth {
     // Credenciais da sua aplicação RD Station
     private static CLIENT_ID = '34883ac3-b203-4862-b196-7d2ec8af3ee8';
     private static CLIENT_SECRET = '6e7bb72e2fea465bb8a79ec4b8519f23';

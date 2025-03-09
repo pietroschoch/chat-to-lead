@@ -11,7 +11,7 @@ export function ChatHeader({ onClose }: ChatHeaderProps) {
         <img className="rounded-xl h-10 w-10" src="https://github.com/pietroschoch.png" alt="" />
         <p className="flex items-center gap-3">
           <span className="text-lg font-bold">Pietro</span>
-          <span className="p-2 bg-gray-200 rounded-md text-gray-600">Empresa</span>
+          <span className="p-2 bg-gray-200 rounded-md text-gray-600">Leankeep</span>
         </p>
       </div>
       <div className="flex items-center gap-3">
