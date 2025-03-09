@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* Ajustes globais para responsividade */
+html, body {
+  @apply overflow-x-hidden;
+}
+
+/* Ajustes para dispositivos móveis */
+@media (max-width: 640px) {
+  body {
+    @apply text-sm;
+  }
+  
+  /* Garante que o chat ocupe toda a tela em dispositivos móveis */
+  #root {
+    @apply min-h-screen flex flex-col;
+  }
+}
+
+/* Corrige problemas com input em iOS */
+input, 
+textarea {
+  @apply appearance-none;
+}
+
+/* Melhora interatividade em dispositivos touch */
+button, 
+[role="button"] {
+  @apply touch-manipulation;
+}

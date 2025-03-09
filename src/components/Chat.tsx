@@ -1,3 +1,4 @@
+// src/components/Chat.tsx
 import React, { useEffect, useRef } from 'react';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessage } from './ChatMessage';
@@ -28,7 +29,7 @@ export function Chat({ onClose }: ChatProps) {
   }, [messages, isTyping]);
 
   return (
-    <div className="w-[28rem] h-[32rem] rounded-2xl fixed bottom-4 right-4 bg-white shadow-lg overflow-hidden">
+    <div className="w-full md:w-[28rem] h-[32rem] md:h-[32rem] rounded-2xl md:rounded-2xl fixed bottom-0 md:bottom-4 right-0 md:right-4 bg-white shadow-lg overflow-hidden">
       <ChatHeader onClose={onClose} />
       <div className="flex flex-col h-[calc(100%-4rem)] overflow-hidden">
         <div className="flex-grow overflow-y-auto p-3 gap-3 flex flex-col">

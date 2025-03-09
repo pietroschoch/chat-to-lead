@@ -136,7 +136,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           // Armazena os dados no localStorage como backup
           try {
-            localStorage.setItem('leadchat_data', JSON.stringify(leadDataRef.current));
+            // Armazenar com flag pendingSend = true para indicar que precisa ser enviado
+            const dataToStore = {
+              ...leadDataRef.current,
+              pendingSend: true,
+              timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('leadchat_data', JSON.stringify(dataToStore));
           } catch (e) {
             console.warn('Não foi possível salvar dados no localStorage:', e);
           }
@@ -146,9 +152,33 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           if (success) {
             await addMessage("Seus dados foram enviados com sucesso! Clique no botão abaixo para continuar no WhatsApp.", true);
+            
+            // Atualizar o localStorage para indicar que o envio foi bem-sucedido
+            try {
+              const storedData = localStorage.getItem('leadchat_data');
+              if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                parsedData.pendingSend = false;
+                localStorage.setItem('leadchat_data', JSON.stringify(parsedData));
+              }
+            } catch (e) {
+              console.warn('Não foi possível atualizar dados no localStorage:', e);
+            }
           } else {
             // Mesmo em caso de falha, ainda permitimos que o usuário continue
             await addMessage("Estamos com um problema técnico temporário, mas não se preocupe! Seus dados foram salvos. Clique no botão abaixo para continuar no WhatsApp.", true);
+            
+            // Garantir que os dados permaneçam com pendingSend = true
+            try {
+              const storedData = localStorage.getItem('leadchat_data');
+              if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                parsedData.pendingSend = true;
+                localStorage.setItem('leadchat_data', JSON.stringify(parsedData));
+              }
+            } catch (e) {
+              console.warn('Não foi possível atualizar dados no localStorage:', e);
+            }
           }
           
           // Adiciona botão do WhatsApp em ambos os casos
@@ -194,15 +224,41 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (savedData) {
             const parsedData = JSON.parse(savedData);
             
-            // Tenta enviar novamente se houver dados completos
-            if (parsedData.name && parsedData.email && parsedData.phone && parsedData.company) {
-              console.log('Dados encontrados de sessão anterior, tentando enviar novamente');
-              submitLeadData(parsedData).then(success => {
-                if (success) {
-                  console.log('Dados recuperados enviados com sucesso');
-                  localStorage.removeItem('leadchat_data');
-                }
-              });
+            // Só tenta enviar novamente se houver flag pendingSend = true
+            if (parsedData.pendingSend === true && 
+                parsedData.name && parsedData.email && 
+                parsedData.phone && parsedData.company) {
+              
+              console.log('Dados pendentes encontrados, tentando enviar novamente');
+              
+              // Verificar se os dados não são muito antigos (mais de 7 dias)
+              const timestamp = new Date(parsedData.timestamp || Date.now());
+              const ageInDays = (Date.now() - timestamp.getTime()) / (1000 * 60 * 60 * 24);
+              
+              if (ageInDays <= 7) {
+                // Dados relativamente recentes, tenta enviar
+                const leadData = {
+                  name: parsedData.name,
+                  email: parsedData.email,
+                  phone: parsedData.phone,
+                  company: parsedData.company
+                };
+                
+                submitLeadData(leadData).then(success => {
+                  if (success) {
+                    console.log('Dados recuperados enviados com sucesso');
+                    // Atualiza o localStorage para indicar que o envio foi bem-sucedido
+                    parsedData.pendingSend = false;
+                    localStorage.setItem('leadchat_data', JSON.stringify(parsedData));
+                  }
+                });
+              } else {
+                // Dados muito antigos, remove-os
+                console.log('Dados antigos encontrados (mais de 7 dias), removendo');
+                localStorage.removeItem('leadchat_data');
+              }
+            } else if (!parsedData.pendingSend) {
+              console.log('Dados já foram enviados anteriormente com sucesso');
             }
           }
         } catch (e) {
