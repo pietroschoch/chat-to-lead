@@ -1,8 +1,10 @@
-    export class RDStationAuth {
+import { corsProxy } from './CorsProxy';
+
+export class RDStationAuth {
     // Credenciais da sua aplicação RD Station
     private static CLIENT_ID = '34883ac3-b203-4862-b196-7d2ec8af3ee8';
     private static CLIENT_SECRET = '6e7bb72e2fea465bb8a79ec4b8519f23';
-    private static TOKEN_URL = '/rd-api/auth/token'; // Alterado para usar o proxy
+    private static TOKEN_URL = 'https://api.rd.services/auth/token';
   
     // Tokens armazenados
     private accessToken: string | null = null;
@@ -33,19 +35,37 @@
         return false;
       }
   
+      const payload = {
+        client_id: RDStationAuth.CLIENT_ID,
+        client_secret: RDStationAuth.CLIENT_SECRET,
+        refresh_token: this.refreshToken,
+        grant_type: 'refresh_token'
+      };
+      
       try {
-        const response = await fetch(RDStationAuth.TOKEN_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            client_id: RDStationAuth.CLIENT_ID,
-            client_secret: RDStationAuth.CLIENT_SECRET,
-            refresh_token: this.refreshToken,
-            grant_type: 'refresh_token'
-          })
-        });
+        // Primeiro tenta usar o proxy configurado no Vite
+        let response: Response;
+        
+        try {
+          response = await fetch('/rd-api/auth/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        } catch (error) {
+          console.log('Falha ao usar proxy local, tentando CORS proxy:', error);
+          
+          // Se falhar, tenta usar o CORS proxy
+          response = await corsProxy.fetch(RDStationAuth.TOKEN_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        }
   
         if (!response.ok) {
           console.error('Falha ao renovar token:', await response.text());
@@ -92,28 +112,44 @@
         'Authorization': `Bearer ${token}`
       };
   
-      // Converte o URL para usar o proxy se for uma URL da API RD
-      let proxyUrl = url;
-      if (url.startsWith('https://api.rd.services')) {
-        proxyUrl = url.replace('https://api.rd.services', '/rd-api');
-      }
-  
-      // Faz a requisição com o token
-      const response = await fetch(proxyUrl, {
-        ...options,
-        headers
-      });
-  
-      // Se receber um erro de autorização (401), tenta renovar o token e repetir a requisição
-      if (response.status === 401 && this.refreshToken) {
-        const refreshed = await this.refreshAccessToken();
-        if (refreshed) {
-          // Atualiza o token no cabeçalho e tenta novamente
-          return this.fetch(url, options);
+      try {
+        // Primeiro tenta usar o proxy configurado no Vite
+        let response: Response;
+        try {
+          // Converte o URL para usar o proxy se for uma URL da API RD
+          let proxyUrl = url;
+          if (url.startsWith('https://api.rd.services')) {
+            proxyUrl = url.replace('https://api.rd.services', '/rd-api');
+          }
+          
+          response = await fetch(proxyUrl, {
+            ...options,
+            headers
+          });
+        } catch (error) {
+          console.log('Falha ao usar proxy local, tentando CORS proxy:', error);
+          
+          // Se falhar, tenta usar o CORS proxy
+          response = await corsProxy.fetch(url, {
+            ...options,
+            headers
+          });
         }
+    
+        // Se receber um erro de autorização (401), tenta renovar o token e repetir a requisição
+        if (response.status === 401 && this.refreshToken) {
+          const refreshed = await this.refreshAccessToken();
+          if (refreshed) {
+            // Atualiza o token no cabeçalho e tenta novamente
+            return this.fetch(url, options);
+          }
+        }
+    
+        return response;
+      } catch (error) {
+        console.error('Erro na requisição:', error);
+        throw error;
       }
-  
-      return response;
     }
   }
   
