@@ -8,11 +8,6 @@ interface OpenChatButtonProps {
 export function OpenChatButton({ onClick }: OpenChatButtonProps) {
   // Efeito para interagir com o loader externo
   useEffect(() => {
-    // Função para verificar se o loader externo está disponível
-    const checkExternalLoader = () => {
-      return typeof window.openLeankeepChat === 'function';
-    };
-
     // Manipulador de eventos para quando o chat for fechado externamente
     const handleChatClosed = () => {
       // Notificar a aplicação React que o chat foi fechado
