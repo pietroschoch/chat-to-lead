@@ -35,23 +35,6 @@
           width:100%;height:100%;border:none;
           background:#fff;
         }
-        #leankeep-chat-button{
-          position:fixed;
-          bottom:20px;right:20px;
-          width:60px;height:60px;
-          background:#4CAF50;
-          border-radius:50%;
-          display:flex;
-          justify-content:center;
-          align-items:center;
-          cursor:pointer;
-          box-shadow:0 4px 8px rgba(0,0,0,0.2);
-          z-index:99998;
-          transition:all 0.3s ease;
-        }
-        #leankeep-chat-button:hover{
-          transform:scale(1.1);
-        }
       `;
       document.head.appendChild(style);
       
@@ -62,36 +45,36 @@
       iframe.title = 'Chat Leankeep';
       container.appendChild(iframe);
       
-      // Criar botão
-      var button = document.createElement('div');
-      button.id = 'leankeep-chat-button';
-      button.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>';
-      document.body.appendChild(button);
-      
-      // Adicionar eventos
-      button.onclick = function(){
-        container.style.display = 'block';
-        button.style.display = 'none';
-      };
-      
       // Ouvir mensagens do iframe
       window.addEventListener('message', function(event){
         if(event.data === 'closechat'){
           container.style.display = 'none';
-          button.style.display = 'flex';
+          // Disparar evento para notificar que o chat foi fechado
+          window.dispatchEvent(new Event('leankeepChatClosed'));
+        }
+        
+        if(event.data === 'openchat'){
+          container.style.display = 'block';
+          // Disparar evento para notificar que o chat foi aberto
+          window.dispatchEvent(new Event('leankeepChatOpened'));
         }
       });
       
-      // Expor método global
+      // Expor métodos globais
       window.openLeankeepChat = function(){
         container.style.display = 'block';
-        button.style.display = 'none';
+        // Disparar evento para notificar que o chat foi aberto
+        window.dispatchEvent(new Event('leankeepChatOpened'));
       };
       
       window.closeLeankeepChat = function(){
         container.style.display = 'none';
-        button.style.display = 'flex';
+        // Disparar evento para notificar que o chat foi fechado
+        window.dispatchEvent(new Event('leankeepChatClosed'));
       };
+      
+      // Sinalizar que o loader está pronto para uso
+      window.dispatchEvent(new Event('leankeepChatReady'));
     }
     
     // Inicializar quando o DOM estiver pronto

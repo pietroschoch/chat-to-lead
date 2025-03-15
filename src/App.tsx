@@ -7,6 +7,39 @@ import { ChatProvider } from './context/ChatContext';
 export function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isExternalLoader, setIsExternalLoader] = useState(false);
+
+  // Detecta se o carregador externo está presente
+  useEffect(() => {
+    const checkExternalLoader = () => {
+      const hasExternalLoader = typeof window.openLeankeepChat === 'function';
+      setIsExternalLoader(hasExternalLoader);
+      return hasExternalLoader;
+    };
+
+    // Verificar imediatamente
+    checkExternalLoader();
+
+    // Verificar novamente quando o loader sinalizar que está pronto
+    const handleLoaderReady = () => {
+      setIsExternalLoader(true);
+    };
+
+    window.addEventListener('leankeepChatReady', handleLoaderReady);
+    
+    // Atualizar estado quando o chat for aberto/fechado externamente
+    const handleChatOpened = () => setIsChatOpen(true);
+    const handleChatClosed = () => setIsChatOpen(false);
+    
+    window.addEventListener('leankeepChatOpened', handleChatOpened);
+    window.addEventListener('leankeepChatClosed', handleChatClosed);
+
+    return () => {
+      window.removeEventListener('leankeepChatReady', handleLoaderReady);
+      window.removeEventListener('leankeepChatOpened', handleChatOpened);
+      window.removeEventListener('leankeepChatClosed', handleChatClosed);
+    };
+  }, []);
 
   // Detecta se é um dispositivo móvel
   useEffect(() => {
@@ -37,14 +70,48 @@ export function App() {
     };
   }, [isMobile, isChatOpen]);
 
+  // Lidar com abertura do chat
+  const handleOpenChat = () => {
+    setIsChatOpen(true);
+    
+    // Se estiver usando o loader externo, não precisamos renderizar nosso próprio Chat
+    if (isExternalLoader) {
+      if (typeof window.openLeankeepChat === 'function') {
+        window.openLeankeepChat();
+      }
+    }
+  };
+
+  // Lidar com fechamento do chat
+  const handleCloseChat = () => {
+    setIsChatOpen(false);
+    
+    // Se estiver usando o loader externo, fechar via método global
+    if (isExternalLoader) {
+      if (typeof window.closeLeankeepChat === 'function') {
+        window.closeLeankeepChat();
+      }
+    }
+  };
+
   return (
     <ChatProvider>
-      {!isChatOpen && <OpenChatButton onClick={() => setIsChatOpen(true)} />}
-      {isChatOpen && (
+      {!isChatOpen && <OpenChatButton onClick={handleOpenChat} />}
+      
+      {/* Só renderizamos nosso próprio Chat se não estivermos usando o loader externo */}
+      {isChatOpen && !isExternalLoader && (
         <div className={isMobile ? "fixed inset-0 z-50 bg-white" : ""}>
-          <Chat onClose={() => setIsChatOpen(false)} />
+          <Chat onClose={handleCloseChat} />
         </div>
       )}
     </ChatProvider>
   );
+}
+
+// Adicionar a interface para o objeto window
+declare global {
+  interface Window {
+    openLeankeepChat?: () => void;
+    closeLeankeepChat?: () => void;
+  }
 }
