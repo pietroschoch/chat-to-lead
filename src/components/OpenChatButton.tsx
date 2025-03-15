@@ -1,15 +1,52 @@
 // src/components/OpenChatButton.tsx
+import { useEffect } from 'react';
+
 interface OpenChatButtonProps {
   onClick: () => void;
 }
 
 export function OpenChatButton({ onClick }: OpenChatButtonProps) {
+  // Efeito para interagir com o loader externo
+  useEffect(() => {
+    // Função para verificar se o loader externo está disponível
+    const checkExternalLoader = () => {
+      return typeof window.openLeankeepChat === 'function';
+    };
+
+    // Manipulador de eventos para quando o chat for fechado externamente
+    const handleChatClosed = () => {
+      // Notificar a aplicação React que o chat foi fechado
+      if (typeof window.onChatClosed === 'function') {
+        window.onChatClosed();
+      }
+    };
+
+    // Adicionar listener para o evento de fechamento do chat
+    window.addEventListener('leankeepChatClosed', handleChatClosed);
+
+    // Permitir que o componente React acesse o método global
+    window.onChatClosed = () => {
+      // Chamar qualquer lógica adicional aqui se necessário
+    };
+
+    // Limpar os listeners quando o componente for desmontado
+    return () => {
+      window.removeEventListener('leankeepChatClosed', handleChatClosed);
+      delete window.onChatClosed;
+    };
+  }, []);
+
   const handleClick = () => {
     // Chamar o callback original
     onClick();
     
-    // Enviar mensagem para abrir o iframe
-    window.postMessage('openchat', '*');
+    // Se o loader externo estiver disponível, usar seu método para abrir o chat
+    if (typeof window.openLeankeepChat === 'function') {
+      window.openLeankeepChat();
+    } else {
+      // Caso o loader não esteja disponível, enviar a mensagem diretamente
+      window.postMessage('openchat', '*');
+    }
   };
 
   return (
@@ -30,4 +67,13 @@ export function OpenChatButton({ onClick }: OpenChatButtonProps) {
       </div>
     </div>
   );
+}
+
+// Adicionar a interface para o objeto window
+declare global {
+  interface Window {
+    openLeankeepChat?: () => void;
+    closeLeankeepChat?: () => void;
+    onChatClosed?: () => void;
+  }
 }

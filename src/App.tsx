@@ -23,16 +23,27 @@ export function App() {
     // Verificar novamente quando o loader sinalizar que está pronto
     const handleLoaderReady = () => {
       setIsExternalLoader(true);
+      console.log("External loader detected and ready");
     };
 
     window.addEventListener('leankeepChatReady', handleLoaderReady);
     
     // Atualizar estado quando o chat for aberto/fechado externamente
-    const handleChatOpened = () => setIsChatOpen(true);
-    const handleChatClosed = () => setIsChatOpen(false);
+    const handleChatOpened = () => {
+      console.log("Chat opened event received");
+      setIsChatOpen(true);
+    };
+    
+    const handleChatClosed = () => {
+      console.log("Chat closed event received");
+      setIsChatOpen(false);
+    };
     
     window.addEventListener('leankeepChatOpened', handleChatOpened);
     window.addEventListener('leankeepChatClosed', handleChatClosed);
+
+    // Para debugging
+    console.log("App component mounted, checking for external loader:", checkExternalLoader());
 
     return () => {
       window.removeEventListener('leankeepChatReady', handleLoaderReady);
@@ -72,23 +83,29 @@ export function App() {
 
   // Lidar com abertura do chat
   const handleOpenChat = () => {
+    console.log("handleOpenChat called");
     setIsChatOpen(true);
     
-    // Se estiver usando o loader externo, não precisamos renderizar nosso próprio Chat
+    // Se estiver usando o loader externo, usar seu método para abrir o chat
     if (isExternalLoader) {
       if (typeof window.openLeankeepChat === 'function') {
+        console.log("Opening chat via external loader");
         window.openLeankeepChat();
+      } else {
+        console.log("External loader detected but openLeankeepChat function not found");
       }
     }
   };
 
   // Lidar com fechamento do chat
   const handleCloseChat = () => {
+    console.log("handleCloseChat called");
     setIsChatOpen(false);
     
     // Se estiver usando o loader externo, fechar via método global
     if (isExternalLoader) {
       if (typeof window.closeLeankeepChat === 'function') {
+        console.log("Closing chat via external loader");
         window.closeLeankeepChat();
       }
     }
@@ -96,7 +113,8 @@ export function App() {
 
   return (
     <ChatProvider>
-      {!isChatOpen && <OpenChatButton onClick={handleOpenChat} />}
+      {/* Sempre mostrar o botão de abertura */}
+      <OpenChatButton onClick={handleOpenChat} />
       
       {/* Só renderizamos nosso próprio Chat se não estivermos usando o loader externo */}
       {isChatOpen && !isExternalLoader && (
