@@ -24,13 +24,28 @@ export function Chat({ onClose }: ChatProps) {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll para o final quando novas mensagens são adicionadas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  // Envia mensagem para o pai quando o chat é fechado
+  const handleClose = () => {
+    onClose();
+    
+    // Envia mensagem para o pai (janela do iframe)
+    if (window.parent && window.parent !== window) {
+      try {
+        window.parent.postMessage('closechat', '*');
+      } catch (e) {
+        console.error('Erro ao enviar mensagem para janela pai:', e);
+      }
+    }
+  };
+
   return (
     <div className="w-full md:w-[28rem] h-[32rem] md:h-[32rem] rounded-2xl md:rounded-2xl fixed bottom-0 md:bottom-4 right-0 md:right-4 bg-white shadow-lg overflow-hidden">
-      <ChatHeader onClose={onClose} />
+      <ChatHeader onClose={handleClose} />
       <div className="flex flex-col h-[calc(100%-4rem)] overflow-hidden">
         <div className="flex-grow overflow-y-auto p-3 gap-3 flex flex-col">
           {messages.map((msg, index) => (
