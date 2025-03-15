@@ -29,18 +29,13 @@
       
       console.log("Removed any existing elements");
       
-      // Criar container
-      var container = document.createElement('div');
-      container.id = 'leankeep-chat-container';
-      container.style.cssText = 'position:fixed;z-index:99999;display:none;';
-      document.body.appendChild(container);
-      
       // Adicionar estilos - Exatamente como o OpenChatButton do React
       var style = document.createElement('style');
       style.id = 'leankeep-chat-styles';
       style.textContent = `
         /* Estilos do container */
         #leankeep-chat-container {
+          position: fixed;
           bottom: 0;
           right: 0;
           width: ${isMobile() ? '100%' : '380px'};
@@ -49,13 +44,18 @@
           border-radius: ${isMobile() ? '0' : '16px'};
           overflow: hidden;
           transition: all 0.3s ease;
+          z-index: 2147483647; /* Valor máximo para z-index */
+          background: white;
         }
         
         #leankeep-chat-iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
           width: 100%;
           height: 100%;
           border: none;
-          background: #fff;
+          background: white;
         }
         
         /* Estilos do botão - Replicando exatamente o estilo do OpenChatButton */
@@ -67,7 +67,7 @@
           align-items: center;
           gap: 8px; /* 2 em rem */
           cursor: pointer;
-          z-index: 99998;
+          z-index: 2147483646; /* Um a menos que o container */
           transition: all 0.15s linear;
         }
         
@@ -156,11 +156,20 @@
       `;
       document.head.appendChild(style);
       
+      // Criar container
+      var container = document.createElement('div');
+      container.id = 'leankeep-chat-container';
+      container.style.display = 'none';
+      document.body.appendChild(container);
+      
       // Criar iframe
       var iframe = document.createElement('iframe');
       iframe.id = 'leankeep-chat-iframe';
       iframe.src = 'https://leankeep-lead-chat.netlify.app/';
       iframe.title = 'Chat Leankeep';
+      iframe.setAttribute('allowtransparency', 'true');
+      iframe.setAttribute('frameborder', '0');
+      iframe.setAttribute('importance', 'high');
       container.appendChild(iframe);
       
       // Criar botão com design idêntico ao OpenChatButton do React
@@ -177,9 +186,14 @@
       `;
       document.body.appendChild(button);
       
-      // Adicionar evento de clique
+      // Adicionar evento de clique ao botão
       button.addEventListener('click', function() {
         console.log("Chat button clicked, opening chat");
+        openChat();
+      });
+      
+      // Função para abrir o chat
+      function openChat() {
         container.style.display = 'block';
         button.style.display = 'none';
         
@@ -187,51 +201,50 @@
         if (isMobile()) {
           document.body.style.overflow = 'hidden';
         }
-      });
-      
-      // Ouvir mensagens do iframe
-      window.addEventListener('message', function(event){
-        console.log("Message received:", event.data);
         
-        if(event.data === 'closechat') {
-          console.log("Closing chat from message");
-          container.style.display = 'none';
-          button.style.display = 'flex';
-          
-          // Restaurar rolagem do body
-          document.body.style.overflow = '';
-        }
-      });
+        // Forçar reflow/repaint do iframe para evitar problemas de renderização
+        iframe.style.display = 'none';
+        setTimeout(function() {
+          iframe.style.display = 'block';
+        }, 10);
+      }
       
-      // Expor métodos globais
-      window.openLeankeepChat = function(){
-        console.log("openLeankeepChat method called");
-        container.style.display = 'block';
-        button.style.display = 'none';
-        
-        // Se for mobile, prevenir rolagem do body
-        if (isMobile()) {
-          document.body.style.overflow = 'hidden';
-        }
-      };
-      
-      window.closeLeankeepChat = function(){
-        console.log("closeLeankeepChat method called");
+      // Função para fechar o chat
+      function closeChat() {
         container.style.display = 'none';
         button.style.display = 'flex';
         
         // Restaurar rolagem do body
         document.body.style.overflow = '';
-      };
+      }
+      
+      // Ouvir mensagens do iframe
+      window.addEventListener('message', function(event) {
+        console.log("Message received:", event.data);
+        
+        if (event.data === 'closechat') {
+          console.log("Closing chat from message");
+          closeChat();
+        }
+        
+        if (event.data === 'openchat') {
+          console.log("Opening chat from message");
+          openChat();
+        }
+      });
+      
+      // Expor métodos globais
+      window.openLeankeepChat = openChat;
+      window.closeLeankeepChat = closeChat;
       
       console.log("Chat elements created successfully");
     }
     
     // Inicializar quando o DOM estiver pronto
-    if(document.readyState === 'loading'){
+    if (document.readyState === 'loading') {
       console.log("Document still loading, waiting for DOMContentLoaded");
       document.addEventListener('DOMContentLoaded', createChat);
-    }else{
+    } else {
       console.log("Document already loaded, creating chat immediately");
       createChat();
     }
