@@ -1,117 +1,103 @@
-(function() {
+(function(){
     // Evitar múltiplas inicializações
-    if (window.leadChatInitialized) return;
-    window.leadChatInitialized = true;
+    if(window.openLeankeepChat) return;
     
-    // Função para detectar se é dispositivo móvel
-    function isMobile() {
-      return window.innerWidth < 768 || 
-             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-  
-    // Remover qualquer instância existente do chat
-    function cleanup() {
-      const existingIframes = document.querySelectorAll('#leadchat-iframe-container');
-      existingIframes.forEach(element => {
-        if (element && element.parentNode) {
-          element.parentNode.removeChild(element);
-        }
-      });
+    // Função para detectar mobile
+    function isMobile(){
+      return window.innerWidth<768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     }
     
-    // Função para criar apenas o iframe do chat (sem botão)
-    function createChatIframe() {
-      // Limpar instâncias anteriores
-      cleanup();
+    // Criar elementos do chat
+    function createChat(){
+      // Limpar qualquer instância existente
+      var old = document.getElementById('leankeep-chat-container');
+      if(old && old.parentNode) old.parentNode.removeChild(old);
       
-      // Cria um container para o iframe
-      const container = document.createElement('div');
-      container.id = 'leadchat-iframe-container';
-      container.style.position = 'fixed';
-      container.style.bottom = '0';
-      container.style.right = '0';
-      container.style.zIndex = '9999';
-      container.style.display = 'none'; // Inicia oculto
+      // Criar container
+      var container = document.createElement('div');
+      container.id = 'leankeep-chat-container';
+      container.style.cssText = 'position:fixed;z-index:99999;display:none;';
       document.body.appendChild(container);
       
-      // Estilos para o iframe
-      const styles = document.createElement('style');
-      styles.id = 'leadchat-styles';
-      styles.textContent = `
-        #leadchat-iframe-container {
-          z-index: 9999;
+      // Adicionar estilos
+      var style = document.createElement('style');
+      style.textContent = `
+        #leankeep-chat-container{
+          bottom:0;right:0;
+          width:${isMobile()?'100%':'380px'};
+          height:${isMobile()?'100%':'550px'};
+          box-shadow:0 5px 40px rgba(0,0,0,0.16);
+          border-radius:${isMobile()?'0':'16px'};
+          overflow:hidden;
+          transition:all 0.3s ease;
         }
-        #leadchat-iframe {
-          border: none;
-          width: ${isMobile() ? '100vw' : '450px'};
-          height: ${isMobile() ? '100vh' : '600px'};
-          max-width: 100%;
-          background: white;
-          border-radius: 16px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-          overflow: hidden;
+        #leankeep-chat-iframe{
+          width:100%;height:100%;border:none;
+          background:#fff;
         }
-        @media (max-width: 767px) {
-          #leadchat-iframe-container.open {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-          }
-          #leadchat-iframe {
-            border-radius: 0;
-          }
+        #leankeep-chat-button{
+          position:fixed;
+          bottom:20px;right:20px;
+          width:60px;height:60px;
+          background:#4CAF50;
+          border-radius:50%;
+          display:flex;
+          justify-content:center;
+          align-items:center;
+          cursor:pointer;
+          box-shadow:0 4px 8px rgba(0,0,0,0.2);
+          z-index:99998;
+          transition:all 0.3s ease;
+        }
+        #leankeep-chat-button:hover{
+          transform:scale(1.1);
         }
       `;
-      document.head.appendChild(styles);
+      document.head.appendChild(style);
       
-      // Cria o iframe
-      const iframe = document.createElement('iframe');
-      iframe.id = 'leadchat-iframe';
+      // Criar iframe
+      var iframe = document.createElement('iframe');
+      iframe.id = 'leankeep-chat-iframe';
       iframe.src = 'https://leankeep-lead-chat.netlify.app/';
-      iframe.title = 'Atendimento ao Cliente';
-      iframe.setAttribute('importance', 'high');
-      iframe.setAttribute('loading', 'eager');
-      iframe.setAttribute('allow', 'clipboard-write');
+      iframe.title = 'Chat Leankeep';
       container.appendChild(iframe);
       
-      // Ouve mensagens do seu aplicativo React para abrir o chat
-      window.addEventListener('message', function(event) {
-        // Mensagem para abrir o chat
-        if (event.data === 'openchat') {
-          container.style.display = 'block';
-          container.classList.add('open');
-        }
-        
-        // Mensagem para fechar o chat
-        if (event.data === 'closechat') {
+      // Criar botão
+      var button = document.createElement('div');
+      button.id = 'leankeep-chat-button';
+      button.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>';
+      document.body.appendChild(button);
+      
+      // Adicionar eventos
+      button.onclick = function(){
+        container.style.display = 'block';
+        button.style.display = 'none';
+      };
+      
+      // Ouvir mensagens do iframe
+      window.addEventListener('message', function(event){
+        if(event.data === 'closechat'){
           container.style.display = 'none';
-          container.classList.remove('open');
-          
-          // Notifica o aplicativo React que o chat foi fechado
-          window.postMessage('chatclosed', '*');
+          button.style.display = 'flex';
         }
       });
       
-      // Expõe métodos globais para abrir/fechar o chat programaticamente
-      window.openLeadChat = function() {
+      // Expor método global
+      window.openLeankeepChat = function(){
         container.style.display = 'block';
-        container.classList.add('open');
+        button.style.display = 'none';
       };
       
-      window.closeLeadChat = function() {
+      window.closeLeankeepChat = function(){
         container.style.display = 'none';
-        container.classList.remove('open');
+        button.style.display = 'flex';
       };
     }
     
-    // Inicia o chat
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', createChatIframe);
-    } else {
-      createChatIframe();
+    // Inicializar quando o DOM estiver pronto
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', createChat);
+    }else{
+      createChat();
     }
   })();
